@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Camera, Sparkles, Upload, Check, Layers, AlertCircle, ArrowRight } from 'lucide-react';
 import { WardrobeItem, ClothingAnalysisResult, CategoryType } from '../types';
 import { ClothingItemGraphic } from './ClothingItemGraphic';
+import { CameraCaptureModal } from './CameraCaptureModal';
 
 interface ScannerLabViewProps {
   wardrobeItems: WardrobeItem[];
@@ -20,6 +21,7 @@ export const ScannerLabView: React.FC<ScannerLabViewProps> = ({
   const [loading, setLoading] = useState<boolean>(false);
   const [analysisResult, setAnalysisResult] = useState<ClothingAnalysisResult | null>(null);
   const [addedSuccess, setAddedSuccess] = useState<boolean>(false);
+  const [isCameraOpen, setIsCameraOpen] = useState<boolean>(false);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -188,7 +190,7 @@ export const ScannerLabView: React.FC<ScannerLabViewProps> = ({
         {/* Photo Upload Area */}
         <div className="pt-2">
           <label className="block text-xs font-semibold uppercase tracking-wider text-[#1C1917] mb-2">
-            Fotoğraf Yükle (İsteğe Bağlı)
+            Fotoğraf Yükle veya Kamera ile Çek (İsteğe Bağlı)
           </label>
           <div className="flex flex-col sm:flex-row items-center gap-4 p-4 bg-[#FAF8F5] rounded-xl border border-dashed border-[#D1C7BD]">
             <div className="w-20 h-20 rounded-lg overflow-hidden bg-white border border-[#E7E3DC] flex items-center justify-center shrink-0">
@@ -198,14 +200,25 @@ export const ScannerLabView: React.FC<ScannerLabViewProps> = ({
                 <Camera className="w-6 h-6 text-[#A8A29E]" />
               )}
             </div>
-            <div className="flex-1 text-center sm:text-left">
-              <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 text-xs font-medium bg-white hover:bg-[#F5F2EB] border border-[#D1C7BD] text-[#1C1917] rounded-lg transition-colors">
-                <Upload className="w-3.5 h-3.5" />
-                <span>Fotoğraf Seç veya Çek</span>
-                <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
-              </label>
-              <p className="text-[11px] text-[#78716C] mt-1.5">
-                Kıyafetin dokusunu ve rengini yapay zekânın doğrudan görmesi için net bir fotoğraf yükleyebilirsiniz.
+            <div className="flex-1 text-center sm:text-left space-y-2">
+              <div className="flex flex-wrap items-center gap-2 justify-center sm:justify-start">
+                <button
+                  type="button"
+                  onClick={() => setIsCameraOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium bg-[#1C1917] hover:bg-[#322E2B] text-white rounded-lg shadow-xs transition-colors shrink-0"
+                >
+                  <Camera className="w-3.5 h-3.5 text-[#E5DCCF]" />
+                  <span>Kamerayı Aç & Çek</span>
+                </button>
+
+                <label className="cursor-pointer inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium bg-white hover:bg-[#F5F2EB] border border-[#D1C7BD] text-[#1C1917] rounded-lg transition-colors shrink-0">
+                  <Upload className="w-3.5 h-3.5 text-[#78716C]" />
+                  <span>Dosyadan Seç</span>
+                  <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+                </label>
+              </div>
+              <p className="text-[11px] text-[#78716C]">
+                Kıyafetin dokusunu, rengini ve detaylarını kameradan anında çekebilir veya galeriden yükleyebilirsiniz.
               </p>
             </div>
           </div>
@@ -352,6 +365,16 @@ export const ScannerLabView: React.FC<ScannerLabViewProps> = ({
           )}
         </div>
       )}
+
+      {/* Live Camera Stream Modal */}
+      <CameraCaptureModal
+        isOpen={isCameraOpen}
+        onClose={() => setIsCameraOpen(false)}
+        onCapture={(img) => {
+          setImagePreview(img);
+          setSelectedExistingId('');
+        }}
+      />
     </div>
   );
 };

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { X, Upload, Sparkles, Check, Camera, Image as ImageIcon } from 'lucide-react';
+import { X, Upload, Sparkles, Check, Camera, Image as ImageIcon, Video } from 'lucide-react';
 import { WardrobeItem, CategoryType } from '../types';
+import { CameraCaptureModal } from './CameraCaptureModal';
 
 interface AddItemModalProps {
   isOpen: boolean;
@@ -25,6 +26,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [analyzingWithAI, setAnalyzingWithAI] = useState<boolean>(false);
   const [aiNote, setAiNote] = useState<string | null>(null);
+  const [isCameraOpen, setIsCameraOpen] = useState<boolean>(false);
 
   if (!isOpen) return null;
 
@@ -130,12 +132,12 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
-          {/* Photo Upload Area */}
+          {/* Photo Upload & Camera Area */}
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-[#1C1917] mb-2">
-              Kıyafet Fotoğrafı (Opsiyonel)
+              Kıyafet Fotoğrafı (Kamera veya Dosya)
             </label>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col sm:flex-row items-center gap-4">
               <div className="relative w-28 h-28 rounded-xl border-2 border-dashed border-[#D1C7BD] bg-[#FAF8F5] overflow-hidden flex items-center justify-center shrink-0">
                 {imagePreview ? (
                   <>
@@ -143,26 +145,43 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setImagePreview(null)}
-                      className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-1"
+                      className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-1 hover:bg-black/80 transition-colors"
+                      title="Fotoğrafı Kaldır"
                     >
-                      <X className="w-3 h-3" />
+                      <X className="w-3.5 h-3.5" />
                     </button>
                   </>
                 ) : (
-                  <label className="cursor-pointer flex flex-col items-center justify-center p-2 text-center">
-                    <Camera className="w-6 h-6 text-[#A8A29E] mb-1" />
-                    <span className="text-[10px] text-[#78716C]">Fotoğraf Seç</span>
-                    <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
-                  </label>
+                  <div className="flex flex-col items-center justify-center p-2 text-center text-[#A8A29E]">
+                    <Camera className="w-7 h-7 mb-1" />
+                    <span className="text-[10px]">Fotoğraf Yok</span>
+                  </div>
                 )}
               </div>
 
-              <div className="space-y-2 flex-1">
+              <div className="space-y-2 flex-1 w-full">
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsCameraOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium rounded-lg bg-[#1C1917] hover:bg-[#322E2B] text-white shadow-xs transition-colors shrink-0"
+                  >
+                    <Camera className="w-3.5 h-3.5 text-[#E5DCCF]" />
+                    <span>Kamerayı Aç & Çek</span>
+                  </button>
+
+                  <label className="cursor-pointer inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium rounded-lg bg-white hover:bg-[#F5F2EB] text-[#1C1917] border border-[#D1C7BD] transition-colors shrink-0">
+                    <Upload className="w-3.5 h-3.5 text-[#78716C]" />
+                    <span>Dosyadan Seç</span>
+                    <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+                  </label>
+                </div>
+
                 <button
                   type="button"
                   onClick={handleAnalyzeWithAI}
-                  disabled={analyzingWithAI}
-                  className="w-full py-2.5 px-4 text-xs font-medium rounded-lg bg-[#FAF8F5] hover:bg-[#F5F2EB] text-[#8B5A2B] border border-[#D1C7BD] flex items-center justify-center gap-1.5 transition-colors"
+                  disabled={analyzingWithAI || (!name && !imagePreview)}
+                  className="w-full py-2 px-3 text-xs font-medium rounded-lg bg-[#FAF8F5] hover:bg-[#F5F2EB] text-[#8B5A2B] border border-[#D1C7BD] flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
                 >
                   {analyzingWithAI ? (
                     <>
@@ -177,13 +196,13 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                   )}
                 </button>
                 <p className="text-[11px] text-[#78716C]">
-                  Görsel veya isimden kumaşı, rengi ve kategoriyi otomatik belirler.
+                  Kamerayla çektiğiniz veya yüklediğiniz görselden kumaş, renk ve tür otomatik algılanır.
                 </p>
               </div>
             </div>
 
             {aiNote && (
-              <div className="mt-2 p-2 bg-[#F5F2EB] rounded-lg text-xs text-[#8B5A2B] flex items-center gap-1.5">
+              <div className="mt-2.5 p-2.5 bg-[#F5F2EB] rounded-lg text-xs text-[#8B5A2B] flex items-center gap-2">
                 <Check className="w-3.5 h-3.5 shrink-0" />
                 <span>{aiNote}</span>
               </div>
@@ -356,6 +375,15 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
           </div>
         </form>
       </div>
+
+      {/* Live Camera Stream Modal */}
+      <CameraCaptureModal
+        isOpen={isCameraOpen}
+        onClose={() => setIsCameraOpen(false)}
+        onCapture={(img) => {
+          setImagePreview(img);
+        }}
+      />
     </div>
   );
 };
