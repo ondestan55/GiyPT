@@ -23,29 +23,9 @@ export const ScannerLabView: React.FC<ScannerLabViewProps> = ({
   const [addedSuccess, setAddedSuccess] = useState<boolean>(false);
   const [isCameraOpen, setIsCameraOpen] = useState<boolean>(false);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-        setSelectedExistingId('');
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleSelectExisting = (id: string) => {
-    setSelectedExistingId(id);
-    const item = wardrobeItems.find((w) => w.id === id);
-    if (item) {
-      setCustomTitle(item.name);
-      setImagePreview(item.image || null);
-    }
-  };
-
-  const handleScan = async () => {
-    if (!customTitle && !imagePreview && !selectedExistingId) return;
+  const handleScan = async (overrideImg?: string) => {
+    const targetImage = overrideImg !== undefined ? overrideImg : imagePreview;
+    if (!customTitle && !targetImage && !selectedExistingId) return;
 
     setLoading(true);
     setAnalysisResult(null);
@@ -57,9 +37,9 @@ export const ScannerLabView: React.FC<ScannerLabViewProps> = ({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: customTitle || selectedItem?.name || 'Kıyafet',
+          name: customTitle || selectedItem?.name || '',
           category: selectedItem?.category || 'tops',
-          imageBase64: imagePreview,
+          imageBase64: targetImage,
           details: selectedItem
             ? `${selectedItem.subCategory}, ${selectedItem.color}, ${selectedItem.fabric}`
             : 'Yeni kıyafet taraması',
@@ -102,6 +82,29 @@ export const ScannerLabView: React.FC<ScannerLabViewProps> = ({
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64 = reader.result as string;
+        setImagePreview(base64);
+        setSelectedExistingId('');
+        handleScan(base64);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSelectExisting = (id: string) => {
+    setSelectedExistingId(id);
+    const item = wardrobeItems.find((w) => w.id === id);
+    if (item) {
+      setCustomTitle(item.name);
+      setImagePreview(item.image || null);
     }
   };
 
@@ -227,7 +230,7 @@ export const ScannerLabView: React.FC<ScannerLabViewProps> = ({
         {/* Action Button */}
         <div>
           <button
-            onClick={handleScan}
+            onClick={() => handleScan()}
             disabled={loading || (!customTitle && !imagePreview && !selectedExistingId)}
             className="w-full py-3 px-6 rounded-xl bg-[#1C1917] hover:bg-[#322E2B] disabled:opacity-50 text-white font-medium text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm transition-colors active:scale-[0.99]"
           >
@@ -373,6 +376,7 @@ export const ScannerLabView: React.FC<ScannerLabViewProps> = ({
         onCapture={(img) => {
           setImagePreview(img);
           setSelectedExistingId('');
+          handleScan(img);
         }}
       />
     </div>

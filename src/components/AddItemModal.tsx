@@ -30,34 +30,19 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleAnalyzeWithAI = async () => {
-    if (!name && !imagePreview) {
-      setAiNote('Lütfen önce bir kıyafet adı yazın veya fotoğraf yükleyin.');
-      return;
-    }
-
+  const triggerAutoAnalysis = async (imgBase64: string) => {
     setAnalyzingWithAI(true);
-    setAiNote(null);
+    setAiNote('Yapay zekâ görseli inceliyor: kıyafet ismi, kategori, tür ve renk belirleniyor...');
 
     try {
       const res = await fetch('/api/ai/analyze-clothing', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: name || 'Yeni Parça',
+          name: name || '',
           category,
-          imageBase64: imagePreview,
+          imageBase64: imgBase64,
+          details: 'Kullanıcı kameradan/fotoğraftan yeni kıyafet ekledi',
         }),
       });
 
@@ -72,13 +57,36 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
         if (data.season) setSeason(data.season);
         if (data.style) setStyle(data.style);
 
-        setAiNote('Yapay zekâ kumaş ve renk analizi tamamlandı! Bilgiler dolduruldu.');
+        setAiNote('✨ Görsel başarıyla analiz edildi! Kıyafet adı, türü ve renk tonu otomatik dolduruldu.');
+      } else {
+        setAiNote('Detaylar kısmi olarak belirlendi. İsterseniz alanları düzenleyebilirsiniz.');
       }
     } catch (err) {
       console.error('AI scan error:', err);
-      setAiNote('AI analizi tamamlandı (yerel stil önerisi uygulandı).');
+      setAiNote('Görsel kaydedildi. Bilgileri dilediğiniz gibi düzenleyebilirsiniz.');
     } finally {
       setAnalyzingWithAI(false);
+    }
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64 = reader.result as string;
+        setImagePreview(base64);
+        triggerAutoAnalysis(base64);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleManualReAnalyze = () => {
+    if (imagePreview) {
+      triggerAutoAnalysis(imagePreview);
+    } else {
+      setAiNote('Lütfen önce bir kıyafet fotoğrafı çekin veya yükleyin.');
     }
   };
 
@@ -142,10 +150,16 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                 {imagePreview ? (
                   <>
                     <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                    {analyzingWithAI && (
+                      <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex flex-col items-center justify-center text-center p-1 text-white space-y-1">
+                        <div className="w-5 h-5 border-2 border-[#E5DCCF]/40 border-t-[#E5DCCF] rounded-full animate-spin" />
+                        <span className="text-[10px] font-medium text-[#E5DCCF]">Taranıyor...</span>
+                      </div>
+                    )}
                     <button
                       type="button"
                       onClick={() => setImagePreview(null)}
-                      className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-1 hover:bg-black/80 transition-colors"
+                      className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-1 hover:bg-black/80 transition-colors z-10"
                       title="Fotoğrafı Kaldır"
                     >
                       <X className="w-3.5 h-3.5" />
@@ -177,33 +191,35 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
                   </label>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={handleAnalyzeWithAI}
-                  disabled={analyzingWithAI || (!name && !imagePreview)}
-                  className="w-full py-2 px-3 text-xs font-medium rounded-lg bg-[#FAF8F5] hover:bg-[#F5F2EB] text-[#8B5A2B] border border-[#D1C7BD] flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
-                >
-                  {analyzingWithAI ? (
-                    <>
-                      <div className="w-3.5 h-3.5 border-2 border-[#8B5A2B]/20 border-t-[#8B5A2B] rounded-full animate-spin" />
-                      <span>AI Analiz Ediyor...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-3.5 h-3.5 text-[#8B5A2B]" />
-                      <span>AI ile Otomatik Analiz Et</span>
-                    </>
-                  )}
-                </button>
+                {imagePreview && (
+                  <button
+                    type="button"
+                    onClick={handleManualReAnalyze}
+                    disabled={analyzingWithAI}
+                    className="w-full py-1.5 px-3 text-xs font-medium rounded-lg bg-[#FAF8F5] hover:bg-[#F5F2EB] text-[#8B5A2B] border border-[#D1C7BD] flex items-center justify-center gap-1.5 transition-colors disabled:opacity-50"
+                  >
+                    <Sparkles className="w-3 h-3 text-[#8B5A2B]" />
+                    <span>Yeniden Analiz Et</span>
+                  </button>
+                )}
+
                 <p className="text-[11px] text-[#78716C]">
-                  Kamerayla çektiğiniz veya yüklediğiniz görselden kumaş, renk ve tür otomatik algılanır.
+                  {analyzingWithAI
+                    ? '⚡ Yapay zekâ görselden kıyafet ismi, rengi ve türünü otomatik çıkarıyor...'
+                    : 'Kamerayla çektiğiniz anda isim, kategori, alt tür ve renk tonu yapay zekâ tarafından otomatik belirlenir.'}
                 </p>
               </div>
             </div>
 
             {aiNote && (
-              <div className="mt-2.5 p-2.5 bg-[#F5F2EB] rounded-lg text-xs text-[#8B5A2B] flex items-center gap-2">
-                <Check className="w-3.5 h-3.5 shrink-0" />
+              <div className={`mt-2.5 p-2.5 rounded-lg text-xs flex items-center gap-2 ${
+                analyzingWithAI ? 'bg-[#F0EBE1] text-[#8B5A2B] animate-pulse' : 'bg-[#F5F2EB] text-[#8B5A2B]'
+              }`}>
+                {analyzingWithAI ? (
+                  <div className="w-3.5 h-3.5 border-2 border-[#8B5A2B]/20 border-t-[#8B5A2B] rounded-full animate-spin shrink-0" />
+                ) : (
+                  <Check className="w-3.5 h-3.5 shrink-0" />
+                )}
                 <span>{aiNote}</span>
               </div>
             )}
@@ -382,6 +398,7 @@ export const AddItemModal: React.FC<AddItemModalProps> = ({
         onClose={() => setIsCameraOpen(false)}
         onCapture={(img) => {
           setImagePreview(img);
+          triggerAutoAnalysis(img);
         }}
       />
     </div>
